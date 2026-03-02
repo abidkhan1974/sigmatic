@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sigmatic-server",
+      "runtimeExecutable": ".venv/bin/sigmatic",
+      "runtimeArgs": ["serve", "--reload", "--port", "8000"],
+      "port": 8000
+    },
+    {
+      "name": "docker-stack",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "--build"],
+      "port": 8000
+    }
+  ]
+}

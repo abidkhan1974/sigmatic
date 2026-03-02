@@ -3,12 +3,13 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from sigmatic.server.middleware.auth import require_api_key
 from sigmatic.server.routes.health import router as health_router
-from sigmatic.server.routes.ingest import router as ingest_router
+from sigmatic.server.routes.ingest import api_ingest_router, webhook_router
 from sigmatic.server.routes.outcomes import router as outcomes_router
 from sigmatic.server.routes.routes import router as routes_router
 from sigmatic.server.routes.signals import router as signals_router
@@ -18,9 +19,7 @@ from sigmatic.server.routes.sources import router as sources_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # type: ignore[type-arg]
     """Application lifespan: startup and shutdown events."""
-    # Startup: connections will be tested via /v1/health
     yield
-    # Shutdown: close database engine
     from sigmatic.server.database import engine
 
     await engine.dispose()
@@ -35,7 +34,6 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -44,15 +42,22 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # API routes under /v1
-    app.include_router(health_router, prefix="/v1", tags=["health"])
-    app.include_router(ingest_router, prefix="/v1", tags=["ingestion"])
-    app.include_router(signals_router, prefix="/v1", tags=["signals"])
-    app.include_router(sources_router, prefix="/v1", tags=["sources"])
-    app.include_router(routes_router, prefix="/v1", tags=["routes"])
-    app.include_router(outcomes_router, prefix="/v1", tags=["outcomes"])
+    _auth = [Depends(require_api_key)]
 
-    # Serve static monitoring dashboard
+    # Public — no auth
+    app.include_router(health_router, prefix="/v1", tags=["health"])
+
+    # Webhook ingest: public, per-source token auth handled inside the handler (Issue #1)
+    app.include_router(webhook_router, prefix="/v1", tags=["ingestion"])
+    # API signal ingestion: requires API key
+    app.include_router(api_ingest_router, prefix="/v1", tags=["ingestion"], dependencies=_auth)
+
+    # All other routes require a valid API key
+    app.include_router(signals_router, prefix="/v1", tags=["signals"], dependencies=_auth)
+    app.include_router(sources_router, prefix="/v1", tags=["sources"], dependencies=_auth)
+    app.include_router(routes_router, prefix="/v1", tags=["routes"], dependencies=_auth)
+    app.include_router(outcomes_router, prefix="/v1", tags=["outcomes"], dependencies=_auth)
+
     monitor_dir = Path(__file__).parent.parent / "monitor"
     if monitor_dir.exists():
         app.mount("/monitor", StaticFiles(directory=str(monitor_dir), html=True), name="monitor")
