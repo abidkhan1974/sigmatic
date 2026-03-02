@@ -2,21 +2,26 @@
 
 Two routers with different auth requirements:
 - webhook_router:    public, authenticated via per-source X-Webhook-Token header
-- api_ingest_router: protected by X-API-Key (Issue #2, still stubbed)
+- api_ingest_router: protected by X-API-Key
 """
 
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
 from sigmatic.server.dependencies import DbSession
-from sigmatic.server.schemas.signal import WebhookIngestResponse
+from sigmatic.server.models.base import generate_uuid
+from sigmatic.server.models.signal import Signal
+from sigmatic.server.schemas.signal import NormalizedSignal, WebhookIngestResponse
 from sigmatic.server.services.ingest_service import (
     InvalidWebhookTokenError,
     SourceNotActiveError,
     SourceNotFoundError,
     ingest_webhook,
 )
+
+_UTC = timezone.utc
 
 # Public — per-source token auth handled inside the handler
 webhook_router = APIRouter()
@@ -64,7 +69,35 @@ async def ingest_webhook_endpoint(
     )
 
 
-@api_ingest_router.post("/ingest/signal", status_code=202)
-async def ingest_signal() -> dict:  # type: ignore[type-arg]
-    """Ingest a pre-normalized signal via API key auth."""
-    raise HTTPException(status_code=501, detail="API signal ingestion not yet implemented")
+@api_ingest_router.post("/ingest/signal", status_code=202, response_model=WebhookIngestResponse)
+async def ingest_signal(body: NormalizedSignal, session: DbSession) -> WebhookIngestResponse:
+    """Ingest a pre-normalized signal via API key auth.
+
+    The request body must conform to the NormalizedSignal schema
+    (symbol, direction required; all other fields optional).
+    No adapter step — the payload is validated directly.
+    """
+    signal = Signal(
+        signal_id=generate_uuid(),
+        source_id=None,
+        symbol=body.symbol,
+        direction=body.direction,
+        confidence=body.confidence,
+        entry_zone=body.entry_zone,
+        stop_distance=body.stop_distance,
+        target=body.target,
+        strategy_id=body.strategy_id,
+        timeframe=body.timeframe,
+        status="INGESTED",
+        raw_payload=body.model_dump_json(),
+        ingested_at=datetime.now(_UTC),
+    )
+    session.add(signal)
+    await session.commit()
+    await session.refresh(signal)
+    return WebhookIngestResponse(
+        signal_id=signal.signal_id,
+        status=signal.status,
+        symbol=signal.symbol,
+        direction=signal.direction,
+    )

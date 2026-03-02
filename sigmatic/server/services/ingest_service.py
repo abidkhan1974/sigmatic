@@ -116,4 +116,19 @@ async def ingest_webhook(
     session.add(signal)
     await session.commit()
     await session.refresh(signal)
+
+    # 5 — Broadcast to any connected WebSocket clients (fire-and-forget)
+    from sigmatic.server.websocket.manager import manager  # local import avoids circular deps
+
+    await manager.broadcast(
+        {
+            "signal_id": signal.signal_id,
+            "status": signal.status,
+            "symbol": signal.symbol,
+            "direction": signal.direction,
+            "source_id": signal.source_id,
+            "ingested_at": signal.ingested_at.isoformat() if signal.ingested_at else None,
+        }
+    )
+
     return signal

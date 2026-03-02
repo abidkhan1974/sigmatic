@@ -14,6 +14,7 @@ from sigmatic.server.routes.outcomes import router as outcomes_router
 from sigmatic.server.routes.routes import router as routes_router
 from sigmatic.server.routes.signals import router as signals_router
 from sigmatic.server.routes.sources import router as sources_router
+from sigmatic.server.routes.ws import ws_router
 
 
 @asynccontextmanager
@@ -57,6 +58,9 @@ def create_app() -> FastAPI:
     app.include_router(sources_router, prefix="/v1", tags=["sources"], dependencies=_auth)
     app.include_router(routes_router, prefix="/v1", tags=["routes"], dependencies=_auth)
     app.include_router(outcomes_router, prefix="/v1", tags=["outcomes"], dependencies=_auth)
+
+    # WebSocket — public (read-only, no credentials exposed)
+    app.include_router(ws_router, prefix="/v1", tags=["streaming"])
 
     monitor_dir = Path(__file__).parent.parent / "monitor"
     if monitor_dir.exists():
