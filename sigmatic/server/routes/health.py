@@ -28,8 +28,8 @@ async def health_check() -> dict:
         import redis.asyncio as aioredis
 
         r = aioredis.from_url(settings.redis_url, socket_timeout=2)
-        await r.ping()
-        await r.aclose()
+        await r.ping()  # type: ignore[misc]
+        await r.aclose()  # type: ignore[misc]
         redis_status = "connected"
     except Exception:
         pass
