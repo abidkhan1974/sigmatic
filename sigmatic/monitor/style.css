@@ -1,0 +1,6 @@
+body { font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3; margin: 0; padding: 2rem; }
+header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+h1 { margin: 0; font-size: 1.5rem; }
+.badge { background: #238636; color: #fff; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; }
+.placeholder { color: #8b949e; }
+a { color: #58a6ff; }
