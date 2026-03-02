@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from sigmatic.server.middleware.auth import require_api_key
+from sigmatic.server.middleware.logging import RequestLoggingMiddleware
 from sigmatic.server.routes.health import router as health_router
 from sigmatic.server.routes.ingest import api_ingest_router, webhook_router
 from sigmatic.server.routes.outcomes import router as outcomes_router
@@ -35,6 +36,8 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Logging first (outermost) so it captures real wall-clock time
+    app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
