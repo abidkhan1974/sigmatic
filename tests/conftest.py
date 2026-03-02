@@ -62,6 +62,7 @@ def create_schema() -> None:
         engine = create_async_engine(url)
         try:
             async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
                 await conn.run_sync(Base.metadata.create_all)
         finally:
             await engine.dispose()

@@ -19,7 +19,10 @@ class Signal(Base, TimestampMixin):
         String(36), primary_key=True, default=generate_uuid
     )
     source_id: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("sources.source_id"), nullable=True, index=True
+        String(36),
+        ForeignKey("sources.source_id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     direction: Mapped[str] = mapped_column(String(10), nullable=False)  # long/short/flat
