@@ -110,7 +110,7 @@ def test_webhook_status_is_ingested_for_valid_tv_payload(
     resp = _post_webhook(
         client, webhook_source["source_id"], webhook_source["webhook_token"], _TV_PAYLOAD
     )
-    assert resp.json()["status"] == "INGESTED"
+    assert resp.json()["status"] == "SCORED"
 
 
 def test_webhook_tv_maps_ticker_to_symbol(

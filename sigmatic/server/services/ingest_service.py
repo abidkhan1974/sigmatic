@@ -5,7 +5,8 @@ Pipeline:
   2. Validate per-source webhook token (constant-time comparison)
   3. Run schema adapter → NormalizedSignal
   4. Persist Signal record with final status
-  5. Return Signal (always 202; errors are captured in status / metadata)
+  5. Score signal (quality_scorer) — only for INGESTED signals
+  6. Broadcast to WebSocket clients
 """
 
 import hmac
@@ -117,7 +118,13 @@ async def ingest_webhook(
     await session.commit()
     await session.refresh(signal)
 
-    # 5 — Broadcast to any connected WebSocket clients (fire-and-forget)
+    # 5 — Quality scoring (only for successfully validated signals)
+    if signal.status == "INGESTED":
+        from sigmatic.server.services.quality_scorer import score_signal
+
+        signal = await score_signal(session, signal)
+
+    # 6 — Broadcast to any connected WebSocket clients (fire-and-forget)
     from sigmatic.server.websocket.manager import manager  # local import avoids circular deps
 
     await manager.broadcast(
@@ -127,6 +134,7 @@ async def ingest_webhook(
             "symbol": signal.symbol,
             "direction": signal.direction,
             "source_id": signal.source_id,
+            "quality_score": signal.quality_score,
             "ingested_at": signal.ingested_at.isoformat() if signal.ingested_at else None,
         }
     )

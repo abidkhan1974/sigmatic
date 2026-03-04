@@ -95,6 +95,12 @@ async def ingest_signal(body: NormalizedSignal, session: DbSession) -> WebhookIn
     session.add(signal)
     await session.commit()
     await session.refresh(signal)
+
+    # Score signal (source_id=None → uses default trust score)
+    from sigmatic.server.services.quality_scorer import score_signal
+
+    signal = await score_signal(session, signal)
+
     return WebhookIngestResponse(
         signal_id=signal.signal_id,
         status=signal.status,

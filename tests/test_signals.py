@@ -207,7 +207,7 @@ def test_api_ingest_response_shape(authed_client: TestClient) -> None:
     )
     data = resp.json()
     assert "signal_id" in data
-    assert data["status"] == "INGESTED"
+    assert data["status"] == "SCORED"
     assert data["symbol"] == "BTCUSDT"
     assert data["direction"] == "short"
 
